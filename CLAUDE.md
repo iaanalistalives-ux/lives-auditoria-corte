@@ -1,0 +1,31 @@
+# CLAUDE.md — Auditoría de Corte (lives-auditoria-corte)
+
+Las reglas generales de trabajo están en el repo privado `lives-instrucciones` (CLAUDE.md). Este archivo solo describe esta herramienta.
+
+## Qué hace
+Registro de Calidad Manufactura en el área de Corte, con dos hojas (herramienta nueva, 28/10/2026, hecha igual que Auditoría de Artes). Aún no está en el portal: se usa con su link.
+- **Proceso** = hoja "CHECK LIST CORTE (AC-002-25)": 35 puntos en 8 secciones (Tizado, Moldes de cartón, Tendido, Corte, Cintera, Collareta, Fusionadora, Enumerado), cada uno OK / No OK / N/A con observación y foto. **Un punto en No OK = RECHAZADO** y la O/Corte no pasa a la auditoría. Todo OK (aunque tenga observación) = APROBADO.
+- **Auditoría de corte** = hoja "REPORTE DE AUDITORÍA DE CORTE (AC-001-25)": datos del corte, corte directo/lavado, distribución de tallas (el total de prendas es la suma), cantidad muestreada y N° de paquetes, 25 defectos con foto, AQL 1.5 % de la hoja (1-50→6 acepta 0 … 3201-10000→200 acepta 7), pase al rechazo, supervisor y observaciones. **Solo se guarda si la O/Corte tiene un check list aprobado** (interruptor `EXIGE_CHECKLIST`).
+
+Pantallas:
+- `index.html` — **entrada** (buscador): filtros (fechas, registro, módulo, auditor, resultado, búsqueda), lista con regla 500 (detalle de puntos No OK, defectos y observaciones en una ventanita con 🔍 / 📝), Excel LIVES (`LS_XLS`) e Imprimir. Sin fecha muestra los últimos 3 meses. **Registrar** abre el formulario en una ventana dentro de la página; cada fila trae **Ver PDF**. Sin dashboard todavía (se hace cuando haya datos reales).
+- `formulario.html` — **formulario** (también link directo para el celular; `?tipo=CL` o `?tipo=AC` lo abre ya elegido). Arriba fijo: "¿Corregir un registro?" (por O/Corte) y "¿Qué vas a registrar?" (Proceso / Auditoría de corte) + la O/Corte; elegidos, quedan en una línea con "Cambiar". Pestañas: Proceso = Datos, Check list, Fotos, Cierre; Auditoría = Datos, Tallas, Defectos, Fotos, Cierre. La O/Corte busca en `partidas` (columna `oc`, con la OP en `publico_ref_ops`), si no en `ctex_corte_liq` (liquidación de corte), si no en registros anteriores; si no está, se llena a mano. Al elegir Auditoría muestra si el proceso de esa O/Corte está aprobado (si no, aviso rojo con botón para registrar el proceso). Al guardar un proceso aprobado ofrece "Seguir con la auditoría de corte". Sin señal queda en cola (IndexedDB `lives_corte_cola`); borrador en el equipo.
+- `ver.html?id=` — **reporte** con el formato de cada hoja (A4 vertical, el check list cabe en una hoja): el check list completo con OK / No OK / N/A y observaciones; la auditoría con tallas, defectos registrados, tabla AQL con la fila marcada y el check list que la habilitó. **Compartir PDF**, Imprimir, 🖼 Fotos (ventana propia por tipo: puntos, defectos, generales), Corregir y Anular.
+
+## Fuera del portal
+Sin `?usuario=` aparece **Identificarme** ("¿Quién eres?" con el personal de Corte de `acor_cat` o un usuario escrito). Se guarda en el equipo (`localStorage` `lives_acor_quien`) y firma lo registrado.
+
+## Base de datos (Supabase lives-datos) — registro `Ac01 auditoria corte ac001 ac002`
+- Puerta única `acor_api(p_accion, p)`: `inicio` (permiso, nombre, check list, defectos, personas, módulos, clientes, AQL, `exige_checklist`), `oc` (datos de la O/Corte y sus registros), `guardar` (tipo CHECKLIST o AUDITORIA, nueva o corrección; no duplica por `token`), `anular`, `ver`, `datos` (sin fechas = últimos 92 días, `todo:true` = todo).
+- Tablas: `acor_registros` (cabecera de los dos tipos; códigos CL-00001 y AC-00001 con `acor_seq_cl` / `acor_seq_ac`), `acor_items` (respuestas del check list), `acor_tallas`, `acor_defectos`, `acor_fotos`, `acor_envios`, `acor_cat` (CHECK 35 puntos, DEFECTO 25, PERSONA 8 del Excel de personal de Corte, MODULO 7, AJUSTE `REGISTRO_LIBRE` y `EXIGE_CHECKLIST`, REGISTRA). Puntos, defectos, personas y módulos se editan en `acor_cat` sin tocar el código.
+- Reglas en la base: no se puede rechazar (corrigiendo) ni anular un check list que ya habilitó una auditoría activa; primero se anula la auditoría.
+- Funciones: `acor_aql_tabla_`, `acor_aql_`, `acor_nombre_`, `acor_supervision_`, `acor_puede`, `acor_foto_permitida`.
+- Fotos: almacén privado `corte-fotos`, ruta `AAAA-MM-DD/<token>/<punto-n|defecto-n|general-n>.jpg`, se suben sin sesión (política `corte-fotos: subir`), se ven con enlaces firmados de 1 hora. Todavía no salen en el visor de fotos (`lives-auditorias-visor`).
+- Lee también `partidas`, `publico_ref_ops`, `ctex_corte_liq`, `cat_clientes`, `perfiles`, `nombre_sistemas`, `mi_nombre`.
+
+## Quién puede registrar
+- Registro libre durante las pruebas: `acor_cat` AJUSTE `REGISTRO_LIBRE` = `SI`. Para cerrar: `NO`; entonces registran solo los de tipo `REGISTRA` (hoy `ctalepcio`). Christian siempre puede. Rodrigo (rcamogliano): supervisión, ve todo y no guarda.
+- A Sistemas: `acor_puede` es la pieza que reemplazan con su seguridad; en SQL Server la herramienta exige usuario para abrir y para leer. Exclusivo de Postgres: jsonb en la puerta, `auth.uid()` (solo supervisión), lectura libre por RLS y Storage para las fotos. La O/Corte debería salir directo del sistema de Corte (hoy de `partidas`, cargada a mano).
+
+## Quién la usa
+Auditores de Corte de Calidad Manufactura (Chorrillos y Yosatex), en prueba desde el 28/10/2026. Hay 6 ejemplos de prueba (CL-00001 a 00003, AC-00001 a 00003, observación "EJEMPLO DE PRUEBA"): anularlos antes de las auditorías reales.
