@@ -645,7 +645,7 @@ td.n,th.n{text-align:right;white-space:nowrap}
 .dg{white-space:nowrap;font-size:12px;color:var(--stone)}
 .dg b{color:var(--rose)}
 .ico.mal{color:var(--rose);background:#FCEBEB}.ico.bien{color:var(--sage-dark);background:#E7F4EF}
-.mini table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}.mini td{border-bottom:1px solid var(--warm);padding:5px 4px;vertical-align:top}.mini td.n{text-align:right;font-weight:700}
+.mini .fl{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--warm);padding:6px 2px;font-size:13.5px}.mini .fl b.n{flex:none}
 .mini .res{font-size:13px;color:var(--stone);margin-bottom:6px}
 .ico{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--slate);background:#EEF2F7;border:none;border-radius:20px;padding:3px 10px;white-space:nowrap;cursor:pointer;font-family:inherit}
 .cam{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--sage-dark);background:#E7F4EF;border-radius:20px;padding:2px 9px;white-space:nowrap}
@@ -860,12 +860,12 @@ function abrirMini(tipo,f){
     tit='Proceso · O/C '+f.oc+' · '+f.id;
     h='<div class="res">'+f.items_ok+' OK · '+f.items_no+' No OK · '+f.items_na+' no aplica'+(f.items_no?' · rechazado: no pasa a la auditoría':' · aprobado: pasa a la auditoría')+'</div>';
     const l=f.no_det||[];
-    h+=l.length?'<table><tbody>'+l.map(x=>'<tr><td><b>'+esc(x.seccion)+'</b> · '+esc(x.item)+(x.obs?'<br><span style="color:#5F726C">'+esc(x.obs)+'</span>':'')+'</td></tr>').join('')+'</tbody></table>':'<div style="font-size:13.5px">Todos los puntos están OK o no aplican.</div>';
+    h+=l.length?l.map(x=>'<div class="fl"><span><b>'+esc(x.seccion)+'</b> · '+esc(x.item)+(x.obs?'<br><span style="color:#5F726C">'+esc(x.obs)+'</span>':'')+'</span></div>').join(''):'<div style="font-size:13.5px">Todos los puntos están OK o no aplican.</div>';
   } else if(tipo==='det'){
     tit='Auditoría · O/C '+f.oc+' · '+f.id;
     h='<div class="res">'+num(f.total_prendas)+' prendas · muestra AQL '+num(f.muestra)+(f.cant_muestreada&&f.cant_muestreada!==f.muestra?' (muestreadas '+num(f.cant_muestreada)+')':'')+' · acepta hasta '+f.acepta+' · '+num(f.total_def)+' defecto(s)'+(f.complemento?' · '+esc(f.complemento):'')+'</div>';
     const l=f.def_det||[];
-    h+=l.length?'<table><tbody>'+l.map(x=>'<tr><td>'+esc(x.defecto)+'</td><td class="n">'+x.cantidad+'</td></tr>').join('')+'</tbody></table>':'<div style="font-size:13.5px">La muestra no tuvo defectos.</div>';
+    h+=l.length?l.map(x=>'<div class="fl"><span>'+esc(x.defecto)+'</span><b class="n">'+x.cantidad+'</b></div>').join(''):'<div style="font-size:13.5px">La muestra no tuvo defectos.</div>';
   } else { tit='Observaciones · '+f.id; h=(f.observacion?'<div style="white-space:pre-wrap;font-size:13.5px">'+esc(f.observacion)+'</div>':'')+(+f.obs_puntos?'<div style="font-size:12.5px;color:#5F726C;margin-top:8px">Además, '+f.obs_puntos+' punto(s) del check list tienen observación: se ven en el reporte.</div>':''); }
   $('miniTit').textContent=tit; $('miniCuerpo').innerHTML=h; $('mini').classList.add('show');
 }

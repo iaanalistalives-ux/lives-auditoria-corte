@@ -726,7 +726,8 @@ Chart.defaults.font.family='Calibri, Arial, sans-serif'; Chart.defaults.font.siz
 Chart.defaults.borderColor='#F1F6F4'; Chart.defaults.maintainAspectRatio=false;
 Chart.defaults.plugins.tooltip.backgroundColor='rgba(14,59,54,.95)'; Chart.defaults.plugins.tooltip.padding=10; Chart.defaults.plugins.tooltip.cornerRadius=6;
 if(window.matchMedia('(max-width:600px)').matches){ Chart.defaults.font.size=11; Chart.defaults.plugins.legend.labels.boxWidth=10; }
-const corto=function(v){ const t=String(this.getLabelForValue(v)); const m=window.innerWidth<600?22:40; return t.length>m?t.slice(0,m-1)+'…':t; };
+/* en celular la sede se abrevia (CH = Chorrillos, YO = Yosatex) para que se distingan los módulos */
+const corto=function(v){ let t=String(this.getLabelForValue(v)); const m=window.innerWidth<600?20:40; if(window.innerWidth<600) t=t.replace(/^CHORRILLOS · /,'CH · ').replace(/^YOSATEX · /,'YO · '); return t.length>m?t.slice(0,m-1)+'…':t; };
 const LEYENDA={position:'top',align:'end',labels:{boxWidth:12,usePointStyle:true,padding:14}};
 /* valor sobre cada punto (líneas) */
 const etiquetasTendencia={id:'etiquetasTendencia',afterDatasetsDraw(chart,args,opts){
@@ -786,7 +787,7 @@ function render(){
   const cl=CL(VIS), ac=AC(VIS), clR=RECH(cl), acR=RECH(ac), pase=ac.filter(a=>a.override&&a.resultado==='APROBADO').length;
   const mu=ac.reduce((s,a)=>s+(+(a.cant_muestreada||a.muestra)||0),0), def=ac.reduce((s,a)=>s+(+a.total_def||0),0), pr=ac.reduce((s,a)=>s+(+a.total_prendas||0),0);
   mostrar('kpiCl',cl.length>0); $('kCl').textContent=num(pct(clR,cl.length),1)+'%'; $('kClS').textContent=clR+' de '+cl.length+' check list con algún punto No OK';
-  mostrar('kpiAc',ac.length>0); $('kAc').textContent=num(pct(acR,ac.length),1)+'%'; $('kAcS').textContent=acR+' de '+ac.length+' auditorías'+(pase?(' · '+pase+' aprobadas con pase al rechazo'):'');
+  mostrar('kpiAc',ac.length>0); $('kAc').textContent=num(pct(acR,ac.length),1)+'%'; $('kAcS').textContent=acR+' de '+ac.length+' auditorías'+(pase?(' · '+pase+(pase===1?' aprobada':' aprobadas')+' con pase al rechazo'):'');
   mostrar('kpiDhu',mu>0); $('kDhu').textContent=mu?num(def/mu*100,1):'—'; $('kDhuS').textContent=num(def)+' defectos en '+num(mu)+' prendas muestreadas';
   $('kN').textContent=num(VIS.length); $('kNS').textContent=cl.length+' procesos (check list) · '+ac.length+' auditorías · '+num(pr)+' prendas auditadas';
   // tendencias: por mes, una línea por año (sin filtro de mes)
@@ -808,9 +809,9 @@ function render(){
   mostrar('pTop',top.length>0);
   if(top.length) grafico('cTop',{type:'bar',data:{labels:top.map(x=>x[0]),datasets:[{data:top.map(x=>x[1]),backgroundColor:'#DC2626',borderRadius:4,barThickness:16}]},
     options:{indexAxis:'y',layout:{padding:{right:80}},plugins:{legend:{display:false},valorBarra:{fmt:v=>num(v)+' · '+num(pct(v,totD),1)+'%'}},scales:{x:{beginAtZero:true,ticks:{precision:0}},y:{ticks:{callback:corto}}}},plugins:[valorBarra]});
-  ranking('pModCl','cModCl','phModCl',cl,a=>a.modulo,'módulo','check list');
-  ranking('pModAc','cModAc','phModAc',ac,a=>a.modulo,'módulo','auditorías');
-  ranking('pGrupo','cGrupo','phGrupo',ac,a=>a.grupo,'grupo','auditorías');
+  ranking('pModCl','cModCl','phModCl',cl,a=>a.modulo,'módulo',['check list rechazados','los check list']);
+  ranking('pModAc','cModAc','phModAc',ac,a=>a.modulo,'módulo',['auditorías rechazadas','las auditorías']);
+  ranking('pGrupo','cGrupo','phGrupo',ac,a=>a.grupo,'grupo',['auditorías rechazadas','las auditorías']);
   reajustarGrids(); Object.values(CH).forEach(c=>{ try{ c.resize(); }catch(e){} });
 }
 function tendencia(pid,cid,base){
@@ -844,9 +845,9 @@ function ranking(pid,cid,phid,lista,llave,nombre,unidad){
   let REF=null; if(ok.length>=3){ const sd=Math.sqrt(ok.reduce((s,x)=>s+Math.pow(x.p-prom,2),0)/ok.length); REF={m:prom,sd:sd}; }
   l=ok.sort((a,b)=>b.p-a.p||b.n-a.n).concat(l.filter(x=>x.low).sort((a,b)=>b.n-a.n)).slice(0,12);
   const color=x=>x.low?'#C9D4D0':(!REF?'#4E6B78':(x.p>=REF.m+REF.sd?'#DC2626':(x.p<=REF.m-REF.sd?'#0F7A5A':'#4E6B78')));
-  $(phid).textContent='% de '+unidad+' rechazados sobre los '+unidad+' de cada '+nombre+'. '+(REF?('Promedio del filtro '+num(REF.m,1)+'%: en rojo quien se separa más de '+num(REF.sd,1)+' puntos hacia arriba, en verde hacia abajo. '):'')+'En gris, menos de '+minn()+' registros (muestra baja).';
+  $(phid).textContent='% de '+unidad[0]+' sobre '+unidad[1]+' de cada '+nombre+'. '+(REF?('Promedio del filtro '+num(REF.m,1)+'%: en rojo quien se separa más de '+num(REF.sd,1)+' puntos hacia arriba, en verde hacia abajo. '):'')+'En gris, menos de '+minn()+' registros (muestra baja).';
   grafico(cid,{type:'bar',data:{labels:l.map(x=>x.k),datasets:[{data:l.map(x=>Math.round(x.p*10)/10),backgroundColor:l.map(color),borderRadius:4,barThickness:16}]},
-    options:{indexAxis:'y',layout:{padding:{right:110}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{ const x=l[c.dataIndex]; return x.r+' rechazados de '+x.n+' · '+x.p.toFixed(1)+'%'; }}},
+    options:{indexAxis:'y',layout:{padding:{right:110}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{ const x=l[c.dataIndex]; return x.r+' de '+x.n+' · '+x.p.toFixed(1)+'%'; }}},
       valorBarra:{fmt:(v,i)=>num(v,1)+'% · '+l[i].r+' de '+l[i].n}},scales:{x:{beginAtZero:true,suggestedMax:100,ticks:{callback:v=>v+'%'}},y:{ticks:{callback:corto}}}},plugins:[valorBarra]});
 }
 $('fAnio').addEventListener('change',()=>{ meses(); render(); });
