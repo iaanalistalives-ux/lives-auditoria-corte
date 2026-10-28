@@ -965,7 +965,7 @@ body.tAC .grid>.soloAC,body.tCL .grid>.soloCL{display:block}
   <div class="verdict" id="verdict"><div class="vk">Resultado</div><div class="vv" id="vText">—</div><div class="vs" id="vSub"></div></div>
   <button class="save" id="save" type="button">Guardar</button>
 </div></div>
-<div id="selloVersion">v2026-10-28a · AC-001-25 / AC-002-25</div>
+<div id="selloVersion">v2026-10-28b · AC-001-25 / AC-002-25</div>
 <div class="toast" id="toast"></div>
 
 <div class="overlay" id="confirmOverlay"><div class="caja">
@@ -1155,7 +1155,9 @@ function ponerFila(m){
 let ocTimer=null;
 async function buscarOC(){
   clearTimeout(ocTimer);
-  const oc=v('ocInput').toUpperCase(); $('ocSelector').style.display='none';
+  const oc=v('ocInput').toUpperCase();
+  if(oc && S._ocBuscada===oc) return;  /* al tocar una partida de la lista, el campo pierde el foco: no se vuelve a buscar ni se esconde la lista */
+  $('ocSelector').style.display='none';
   if(!oc){ ponerFila(null); S.ocReg=[]; S._ocBuscada=''; $('ocHint').className='hint'; $('ocHint').textContent='Escríbela y los datos salen solos de la base de partidas.'; pintarEstadoCL(); return; }
   if(S._ocBuscada===oc) return;
   S._ocBuscada=oc;
