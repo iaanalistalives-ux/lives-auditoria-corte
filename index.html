@@ -644,6 +644,9 @@ td.n,th.n{text-align:right;white-space:nowrap}
 .btn.vpdf{padding:4px 12px;min-height:32px;font-size:12px;white-space:nowrap}
 .dg{white-space:nowrap;font-size:12px;color:var(--stone)}
 .dg b{color:var(--rose)}
+.ico.mal{color:var(--rose);background:#FCEBEB}.ico.bien{color:var(--sage-dark);background:#E7F4EF}
+.mini .fl{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--warm);padding:6px 2px;font-size:13.5px}.mini .fl b.n{flex:none}
+.mini .res{font-size:13px;color:var(--stone);margin-bottom:6px}
 .ico{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--slate);background:#EEF2F7;border:none;border-radius:20px;padding:3px 10px;white-space:nowrap;cursor:pointer;font-family:inherit}
 .cam{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--sage-dark);background:#E7F4EF;border-radius:20px;padding:2px 9px;white-space:nowrap}
 .lsTope500{font-size:12px;color:#5F726C;text-align:center;padding:8px 0}
@@ -697,6 +700,7 @@ body.modalAbierta{overflow:hidden}
 <div class="wrap">
   <div class="bar" id="barra">
     <button class="btn primary" id="btnRegistrar" type="button" disabled>Registrar</button>
+    <button class="btn" id="btnDash" type="button" title="Dashboard de las auditorías de Corte">Dashboard</button>
     <button class="btn" id="btnQuien" type="button" style="display:none"></button>
     <label>Desde<input type="date" id="fDesde"></label>
     <label>Hasta<input type="date" id="fHasta"></label>
@@ -715,7 +719,7 @@ body.modalAbierta{overflow:hidden}
     <div class="pt">Registros de Corte</div>
     <div class="ph" id="ph">Una fila por proceso (check list AC-002-25) o auditoría de corte (AC-001-25), lo más reciente arriba.</div>
     <div class="tscroll"><table>
-      <thead><tr><th>Fecha</th><th>Código</th><th>Registro</th><th>O/Corte</th><th>OP</th><th>Grupo</th><th>Color</th><th>Módulo / taller</th><th>Detalle</th><th>Obs.</th><th>Auditor</th><th>Resultado</th><th>Fotos</th><th>Reporte</th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Registro</th><th>O/Corte</th><th>OP</th><th>Grupo</th><th>Color</th><th>Módulo / taller</th><th>Detalle</th><th>Obs.</th><th>Auditor</th><th>Resultado</th><th>Fotos</th><th>Reporte</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table></div>
     <div id="vacio" class="vacio" style="display:none"></div>
@@ -777,12 +781,12 @@ function abrirQuien(){
   const cerrar=()=>ov.remove();
   $('qSel').addEventListener('change',()=>{ $('qOtro').value=''; $('qErr').textContent=''; });
   $('qOtro').addEventListener('input',()=>{ $('qSel').value=''; $('qErr').textContent=''; });
-  $('qNo').addEventListener('click',cerrar);
+  $('qNo').addEventListener('click',()=>{ abrirQuien.luego=''; cerrar(); });
   ov.addEventListener('click',e=>{ if(e.target===ov) cerrar(); });
   $('qOk').addEventListener('click',()=>{
     const val=($('qOtro').value.trim()||$('qSel').value).trim();
     if(!val){ $('qErr').textContent='Elige tu nombre o escribe tu usuario.'; return; }
-    try{ localStorage.setItem(QUIEN_KEY,val); }catch(e){ $('qErr').textContent='Este navegador no deja guardar el nombre.'; return; }
+    try{ localStorage.setItem(QUIEN_KEY,val); if(abrirQuien.luego) sessionStorage.setItem('lives_acor_abrir',abrirQuien.luego); }catch(e){ $('qErr').textContent='Este navegador no deja guardar el nombre.'; return; }
     location.reload();
   });
   const q=$('qQuitar'); if(q) q.addEventListener('click',()=>{ try{ localStorage.removeItem(QUIEN_KEY); }catch(e){} location.reload(); });
@@ -795,7 +799,8 @@ async function iniciar(){
     else { b.disabled=true; b.textContent='Solo para quien registra'; b.title=INI.supervision?'Modo supervisión: ves todo, no se guarda nada':'Solo para quien registra auditorías de Corte'; }
   }catch(e){ $('btnRegistrar').textContent='Solo para quien registra'; }
   if(!NOMBRE_PORTAL){ const q=$('btnQuien'); q.style.display=''; q.textContent=USUARIO?'Cambiar de persona':'Identificarme'; q.title=USUARIO?('Registrando como '+USUARIO.toUpperCase()):'Elige quién eres para poder registrar'; q.onclick=abrirQuien;
-    if(!USUARIO){ const b=$('btnRegistrar'); b.disabled=true; b.textContent='Registrar'; b.title='Primero toca Identificarme'; } }
+    if(!USUARIO && !(INI&&INI.supervision)){ const b=$('btnRegistrar'); b.disabled=false; b.textContent='Registrar'; b.title='Te pregunta quién eres una sola vez y abre el formulario'; } }
+  try{ if(USUARIO && sessionStorage.getItem('lives_acor_abrir')==='form'){ sessionStorage.removeItem('lives_acor_abrir'); setTimeout(()=>abrir('form'),300); } }catch(e){}
   await cargar();
 }
 async function cargar(desde){
@@ -811,7 +816,7 @@ async function cargar(desde){
   const opts=(sel,vals,todos)=>{ const act=$(sel).value; const u=[...new Set(vals.filter(Boolean))].sort();
     $(sel).innerHTML='<option value="">'+todos+'</option>'+u.map(x=>'<option'+(x===act?' selected':'')+'>'+esc(x)+'</option>').join(''); };
   opts('fMod',FILAS.map(f=>f.modulo),'Todos'); opts('fAud',FILAS.map(f=>f.auditor),'Todos');
-  $('ph').textContent='Una fila por proceso (check list AC-002-25) o auditoría de corte (AC-001-25), lo más reciente arriba'+(DESDE_CARGADO?(' · desde el '+fFecha(DESDE_CARGADO)+' (elige otra fecha en Desde para ver antes)'):'')+'. Proceso: un punto No OK lo rechaza. Auditoría: AQL 1.5 % de la hoja. 📷 = tiene fotos. Toca Ver PDF (o la fila) para ver el reporte.';
+  $('ph').textContent='Una fila por proceso (check list AC-002-25) o auditoría de corte (AC-001-25), lo más reciente arriba'+(DESDE_CARGADO?(' · desde el '+fFecha(DESDE_CARGADO)+' (elige otra fecha en Desde para ver antes)'):'')+'. Proceso: un punto No OK lo rechaza. Auditoría: AQL 1.5 % de la hoja. Toca el botón de Detalle para ver los puntos No OK o los defectos. 📷 = tiene fotos. Toca Ver PDF (o la fila) para ver el reporte.';
   render();
 }
 function filtrar(){
@@ -821,19 +826,16 @@ function filtrar(){
     (!q||norm([f.id,f.oc,f.op,f.partida,f.grupo,f.estilo,f.color,f.cliente,f.cod_tela,f.tela,f.modulo,f.observacion].join(' ')).indexOf(q)>=0));
 }
 function hayFiltro(){ return !!($('fDesde').value||$('fHasta').value||$('fTipo').value||$('fMod').value||$('fAud').value||$('fRes').value||$('fQ').value.trim()); }
+/* Detalle: un botón por fila; el detalle completo se abre en una ventanita para que la tabla no se descuadre */
 function detalle(f){
-  if(f.tipo==='CHECKLIST'){
-    return '<span class="dg">'+f.items_ok+' OK'+(f.items_no?' · <b>'+f.items_no+' No OK</b>':'')+(f.items_na?' · '+f.items_na+' N/A':'')+'</span>'+
-      (f.items_no?' <button type="button" class="ico" data-mini="no" title="Ver los puntos No OK">🔍 Ver</button>':'');
-  }
-  return '<span class="dg">'+num(f.total_prendas)+' prendas · muestra '+num(f.cant_muestreada||f.muestra)+' · '+(f.total_def?'<b>'+f.total_def+'</b>':'0')+' def. (≤'+f.acepta+')</span>'+
-    (f.total_def?' <button type="button" class="ico" data-mini="def" title="Ver los defectos">🔍 Ver</button>':'');
+  if(f.tipo==='CHECKLIST') return '<button type="button" class="ico'+(f.items_no?' mal':' bien')+'" data-mini="det" title="Ver el detalle del check list">'+(f.items_no?'🔍 '+f.items_no+' No OK':'✓ Todo OK')+'</button>';
+  return '<button type="button" class="ico'+(f.total_def>f.acepta?' mal':'')+'" data-mini="det" title="Ver tallas, muestra y defectos">🔍 '+num(f.total_def)+' defecto'+(+f.total_def===1?'':'s')+'</button>';
 }
 function render(){
   VISTAS=filtrar();
   const n=VISTAS.length, lista=hayFiltro()?VISTAS:VISTAS.slice(0,500);
   $('tbody').innerHTML=lista.map(f=>{ const e=estado(f), obs=f.observacion||(+f.obs_puntos?'x':'');
-    return '<tr data-id="'+esc(f.id)+'"><td data-l="Fecha">'+fFecha(f.fecha)+'</td><td data-l="Código">'+esc(f.id)+'</td><td data-l="Registro"><span class="tp">'+tipoTx(f)+'</span></td>'+
+    return '<tr data-id="'+esc(f.id)+'"><td data-l="Fecha">'+fFecha(f.fecha)+'</td><td data-l="Registro"><span class="tp">'+tipoTx(f)+'</span></td>'+
       '<td data-l="O/Corte"><b>'+esc(f.oc)+'</b></td><td data-l="OP">'+esc(f.op)+'</td><td data-l="Grupo">'+esc(f.grupo)+'</td><td data-l="Color">'+esc(f.color)+'</td><td data-l="Módulo">'+esc(f.modulo)+'</td>'+
       '<td data-l="Detalle">'+detalle(f)+'</td>'+
       '<td data-l="Obs.">'+(obs?'<button type="button" class="ico" data-mini="obs" title="Ver observaciones">📝 Ver</button>':'<span class="dg">—</span>')+'</td>'+
@@ -854,9 +856,17 @@ $('btnImprimir').addEventListener('click',()=>window.print());
 /* ventanita con los puntos No OK, los defectos o las observaciones (para que la tabla no se descuadre) */
 function abrirMini(tipo,f){
   let tit='', h='';
-  if(tipo==='no'){ tit='Puntos No OK · '+f.id; h='<ul>'+String(f.puntos_no||'').split(' · ').map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>'; }
-  else if(tipo==='def'){ tit='Defectos · '+f.id; h='<ul>'+String(f.defectos||'').split(' · ').map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>'; }
-  else { tit='Observaciones · '+f.id; h=(f.observacion?'<div style="white-space:pre-wrap;font-size:13.5px">'+esc(f.observacion)+'</div>':'')+(+f.obs_puntos?'<div style="font-size:12.5px;color:#5F726C;margin-top:8px">Además, '+f.obs_puntos+' punto(s) del check list tienen observación: se ven en el reporte.</div>':''); }
+  if(tipo==='det' && f.tipo==='CHECKLIST'){
+    tit='Proceso · O/C '+f.oc+' · '+f.id;
+    h='<div class="res">'+f.items_ok+' OK · '+f.items_no+' No OK · '+f.items_na+' no aplica'+(f.items_no?' · rechazado: no pasa a la auditoría':' · aprobado: pasa a la auditoría')+'</div>';
+    const l=f.no_det||[];
+    h+=l.length?l.map(x=>'<div class="fl"><span><b>'+esc(x.seccion)+'</b> · '+esc(x.item)+(x.obs?'<br><span style="color:#5F726C">'+esc(x.obs)+'</span>':'')+'</span></div>').join(''):'<div style="font-size:13.5px">Todos los puntos están OK o no aplican.</div>';
+  } else if(tipo==='det'){
+    tit='Auditoría · O/C '+f.oc+' · '+f.id;
+    h='<div class="res">'+num(f.total_prendas)+' prendas · muestra AQL '+num(f.muestra)+(f.cant_muestreada&&f.cant_muestreada!==f.muestra?' (muestreadas '+num(f.cant_muestreada)+')':'')+' · acepta hasta '+f.acepta+' · '+num(f.total_def)+' defecto(s)'+(f.complemento?' · '+esc(f.complemento):'')+'</div>';
+    const l=f.def_det||[];
+    h+=l.length?l.map(x=>'<div class="fl"><span>'+esc(x.defecto)+'</span><b class="n">'+x.cantidad+'</b></div>').join(''):'<div style="font-size:13.5px">La muestra no tuvo defectos.</div>';
+  } else { tit='Observaciones · '+f.id; h=(f.observacion?'<div style="white-space:pre-wrap;font-size:13.5px">'+esc(f.observacion)+'</div>':'')+(+f.obs_puntos?'<div style="font-size:12.5px;color:#5F726C;margin-top:8px">Además, '+f.obs_puntos+' punto(s) del check list tienen observación: se ven en el reporte.</div>':''); }
   $('miniTit').textContent=tit; $('miniCuerpo').innerHTML=h; $('mini').classList.add('show');
 }
 $('miniCerrar').addEventListener('click',()=>$('mini').classList.remove('show'));
@@ -864,9 +874,9 @@ $('mini').addEventListener('click',e=>{ if(e.target.id==='mini') $('mini').class
 
 /* ---------- ventana dentro de la página ---------- */
 let M_SUCIO=false, M_REFRESCAR=false;
-const TIT={ver:'Reporte de Corte',form:'Registrar proceso o auditoría de corte'};
+const TIT={ver:'Reporte de Corte',form:'Registrar proceso o auditoría de corte',dash:'Dashboard de auditorías de Corte'};
 function abrir(tipo,id){
-  const u=new URL({ver:'ver.html',form:'formulario.html'}[tipo],location.href);
+  const u=new URL({ver:'ver.html',form:'formulario.html',dash:'dashboard.html'}[tipo],location.href);
   u.searchParams.set('modal','1'); if(NOMBRE_PORTAL) u.searchParams.set('usuario',NOMBRE_PORTAL); if(id) u.searchParams.set('id',id);
   $('mTit').textContent=TIT[tipo]; M_SUCIO=false; $('mFrame').src=u.toString();
   $('modal').classList.add('show'); document.body.classList.add('modalAbierta');
@@ -877,7 +887,8 @@ function cerrar(forzar){
   setTimeout(()=>{ $('modal').classList.remove('show'); document.body.classList.remove('modalAbierta'); $('mFrame').src='about:blank'; M_SUCIO=false;
     if(M_REFRESCAR){ M_REFRESCAR=false; cargar($('fDesde').value&&DESDE_CARGADO&&$('fDesde').value<DESDE_CARGADO?$('fDesde').value:undefined); } },80);
 }
-$('btnRegistrar').addEventListener('click',()=>abrir('form'));
+$('btnRegistrar').addEventListener('click',()=>{ if(!USUARIO){ abrirQuien.luego='form'; abrirQuien(); return; } abrir('form'); });
+$('btnDash').addEventListener('click',()=>abrir('dash'));
 $('mCerrar').addEventListener('click',()=>cerrar(false));
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ if($('mini').classList.contains('show')) $('mini').classList.remove('show'); else if($('modal').classList.contains('show')) cerrar(false); } });
 window.addEventListener('message',e=>{
