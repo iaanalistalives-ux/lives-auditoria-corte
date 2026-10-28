@@ -845,15 +845,16 @@ body.tAC .grid>.soloAC,body.tCL .grid>.soloCL{display:block}
   <div class="pane" data-k="datos" data-nom="Datos">
     <div class="card">
       <div class="sec"><span class="dot"></span>Datos del corte</div>
+      <div class="hint" style="margin:-6px 0 10px">OP, partida, grupo, cliente, estilo, color y tela salen de la base de partidas con la O/Corte: no se escriben.</div>
       <div class="grid">
-        <div><label for="op">OP</label><input id="op" placeholder="Sale de la O/Corte"></div>
-        <div><label for="partida">Partida</label><input id="partida" placeholder="Sale de la O/Corte"></div>
-        <div><label for="grupo">Grupo</label><input id="grupo" placeholder="Sale de la O/Corte"></div>
-        <div><label for="cliente">Cliente</label><input id="cliente" placeholder="Sale del grupo"></div>
-        <div><label for="estilo">Estilo</label><input id="estilo" placeholder="Sale de la OP"></div>
-        <div><label for="color">Color</label><input id="color" placeholder="Sale de la O/Corte"></div>
-        <div><label for="codTela">Código de tela</label><input id="codTela" placeholder="Sale de la O/Corte"></div>
-        <div><label for="tela">Tela</label><input id="tela" placeholder="Sale de la O/Corte"></div>
+        <div><label for="op">OP</label><input id="op" readonly placeholder="Sale de la O/Corte"></div>
+        <div><label for="partida">Partida</label><input id="partida" readonly placeholder="Sale de la O/Corte"></div>
+        <div><label for="grupo">Grupo</label><input id="grupo" readonly placeholder="Sale de la O/Corte"></div>
+        <div><label for="cliente">Cliente</label><input id="cliente" readonly placeholder="Sale de la O/Corte"></div>
+        <div><label for="estilo">Estilo</label><input id="estilo" readonly placeholder="Sale de la O/Corte"></div>
+        <div><label for="color">Color</label><input id="color" readonly placeholder="Sale de la O/Corte"></div>
+        <div><label for="codTela">Código de tela</label><input id="codTela" readonly placeholder="Sale de la O/Corte"></div>
+        <div><label for="tela">Tela</label><input id="tela" readonly placeholder="Sale de la O/Corte"></div>
         <div class="full soloAC"><label for="complemento">Complemento</label><input id="complemento" placeholder="Ej. collareta, cuello, puño"></div>
         <div class="full soloAC" id="fCorte"><label>Corte *</label>
           <div class="seg" id="segCorte"><button type="button" data-v="DIRECTO">Directo</button><button type="button" data-v="LAVADO">Lavado</button></div>
@@ -964,7 +965,7 @@ body.tAC .grid>.soloAC,body.tCL .grid>.soloCL{display:block}
   <div class="verdict" id="verdict"><div class="vk">Resultado</div><div class="vv" id="vText">—</div><div class="vs" id="vSub"></div></div>
   <button class="save" id="save" type="button">Guardar</button>
 </div></div>
-<div id="selloVersion">v2026-10-28a · AC-001-25 / AC-002-25</div>
+<div id="selloVersion">v2026-10-28b · AC-001-25 / AC-002-25</div>
 <div class="toast" id="toast"></div>
 
 <div class="overlay" id="confirmOverlay"><div class="caja">
@@ -1018,7 +1019,7 @@ const AQL=[{min:1,max:50,n:6,a:0},{min:51,max:90,n:13,a:0},{min:91,max:150,n:20,
 const TALLAS_RAPIDAS=['XXS','XS','S','M','L','XL','XXL'];
 function aqlFor(l){ const r=AQL.find(x=>l>=x.min&&l<=x.max); return r?{muestra:r.n,acepta:r.a,rechaza:r.a+1}:null; }
 
-let INI=null, CHK=[], CAT=[], SECCIONES=[];
+let INI=null, CHK=[], CAT=[], SECCIONES=[], PART=[];
 const S={tipo:'',editId:'',fechaOriginal:'',oc:null,ocReg:[],items:{},secNA:{},tallas:[],defs:{},fotosGen:[],override:false,corte:'',sucio:false,_cam:null,_ocBuscada:''};
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -1061,6 +1062,7 @@ async function iniciar(){
   $('auditor').value=USUARIO?(INI.nombre||USUARIO.toUpperCase()):'';
   moduloPorDefecto();
   pintarChecklist(); pintarDefectos(); pintarTallas();
+  cargarPartidas();
   $('chipsTalla').innerHTML=TALLAS_RAPIDAS.map(t=>'<button type="button" data-t="'+t+'">'+t+'</button>').join('');
   permiso();
   await restaurarBorrador();
@@ -1135,31 +1137,45 @@ document.querySelectorAll('#segTipo button').forEach(b=>b.onclick=()=>{
 
 /* ===================== O/Corte ===================== */
 function clienteDeGrupo(g){ const pre=String(g||'').substring(0,3).toUpperCase(); const hit=(INI.clientes||[]).find(c=>c[0]===pre); return hit?hit[1]:''; }
+/* Base de partidas: [O/Corte, OP, partida, grupo, código de tela, tela, color, estilo, cliente]. Se guarda en el equipo para buscar sin señal. */
+async function cargarPartidas(){
+  try{ const c=JSON.parse(localStorage.getItem('lives_acor_partidas')||'null'); if(c && c.filas) PART=c.filas; }catch(e){}
+  try{ const d=await api('partidas'); if(d && d.ok){ PART=d.filas||[]; try{ localStorage.setItem('lives_acor_partidas',JSON.stringify({filas:PART,en:Date.now()})); }catch(e){} } }
+  catch(e){ if(!PART.length) $('ocHint').textContent='No se pudo cargar la base de partidas. Recarga la página con buena señal.'; }
+  if(v('ocInput') && !S.oc){ S._ocBuscada=''; buscarOC(); }
+}
+function filaDe(a){ return {oc:String(a[0]),op:a[1]||'',partida:a[2]||'',grupo:a[3]||'',cod_tela:a[4]||'',tela:a[5]||'',color:a[6]||'',estilo:a[7]||'',cliente:a[8]||''}; }
+const CAMPOS_BASE=[['op','op'],['partida','partida'],['grupo','grupo'],['cliente','cliente'],['estilo','estilo'],['color','color'],['codTela','cod_tela'],['tela','tela']];
 function ponerFila(m){
   S.oc=m||null;
-  const set=(id,val)=>{ if(m && (val!==undefined && val!==null && val!=='')) $(id).value=val; };
-  if(m){ set('op',m.op); set('partida',m.partida); set('grupo',m.grupo); set('cliente',m.cliente||clienteDeGrupo(m.grupo)); set('estilo',m.estilo); set('color',m.color); set('codTela',m.cod_tela); set('tela',m.tela);
-    if(m.prendas && !S.tallas.some(t=>+t.cant>0)) $('ocHint').textContent='✓ Datos completados. La liquidación registra '+m.prendas+' prendas cortadas.'; }
+  CAMPOS_BASE.forEach(([id,k])=>{ $(id).value=m?(m[k]||''):''; });
+  if(m) $('fOc').classList.remove('campoErr');
   compactarOc(!!(m && S.tipo));
 }
 let ocTimer=null;
 async function buscarOC(){
   clearTimeout(ocTimer);
-  const oc=v('ocInput').toUpperCase(); $('ocSelector').style.display='none';
-  if(!oc){ S.oc=null; S.ocReg=[]; S._ocBuscada=''; $('ocHint').className='hint'; $('ocHint').textContent='Escríbela y los datos salen solos de la base de partidas.'; pintarEstadoCL(); return; }
+  const oc=v('ocInput').toUpperCase();
+  if(oc && S._ocBuscada===oc) return;  /* al tocar una partida de la lista, el campo pierde el foco: no se vuelve a buscar ni se esconde la lista */
+  $('ocSelector').style.display='none';
+  if(!oc){ ponerFila(null); S.ocReg=[]; S._ocBuscada=''; $('ocHint').className='hint'; $('ocHint').textContent='Escríbela y los datos salen solos de la base de partidas.'; pintarEstadoCL(); return; }
   if(S._ocBuscada===oc) return;
-  S._ocBuscada=oc; $('ocHint').className='hint'; $('ocHint').textContent='Buscando la O/Corte…';
-  let d; try{ d=await api('oc',{oc:oc}); }catch(e){ S._ocBuscada=''; $('ocHint').className='hint warn'; $('ocHint').textContent='Sin conexión: llena los datos a mano en la pestaña Datos.'; return; }
-  if(v('ocInput').toUpperCase()!==oc) return;
-  S.ocReg=(d&&d.registros)||[];
-  const filas=(d&&d.filas)||[];
-  // si no está en las bases, se toman los datos de un registro anterior de esta misma O/Corte
-  if(!filas.length && S.ocReg.length){ const r=S.ocReg[0]; filas.push({fuente:'REGISTRO',op:r.op,partida:r.partida,grupo:r.grupo,cliente:r.cliente,estilo:r.estilo,color:r.color,cod_tela:r.cod_tela,tela:r.tela}); }
+  S._ocBuscada=oc;
+  const filas=PART.filter(r=>String(r[0])===oc).map(filaDe);
+  // corrección de un registro cuya O/Corte ya no está en la base: se quedan los datos con que se guardó
+  const guardado=S.editId?{oc:oc,op:v('op'),partida:v('partida'),grupo:v('grupo'),cliente:v('cliente'),estilo:v('estilo'),color:v('color'),cod_tela:v('codTela'),tela:v('tela')}:null;
+  if(!filas.length && !(guardado && guardado.grupo)){ ponerFila(null); S.ocReg=[]; pintarEstadoCL(); $('ocHint').className='hint warn';
+    $('ocHint').textContent=PART.length?'Esa O/Corte no está en la base de partidas. Revisa el número o avisa a Christian para que actualice la base.':'Cargando la base de partidas…'; recalc(); return; }
+  $('ocHint').className='hint'; $('ocHint').textContent='✓ Datos de la base de partidas.';
+  // registros de esta O/Corte (para saber si el proceso está aprobado)
+  S.ocSinRed=false;
+  try{ const d=await api('oc',{oc:oc}); if(v('ocInput').toUpperCase()!==oc) return; S.ocReg=(d&&d.registros)||[]; }
+  catch(e){ S.ocReg=[]; S.ocSinRed=true; }
   pintarEstadoCL();
-  if(!filas.length){ ponerFila(null); $('ocHint').className='hint warn'; $('ocHint').textContent='Esta O/Corte no está en la base de partidas: llena los datos a mano en la pestaña Datos.'; compactarOc(false); recalc(); return; }
-  $('ocHint').className='hint'; $('ocHint').textContent='✓ Datos completados desde la base de '+(filas[0].fuente==='LIQUIDACION'?'liquidación de corte':(filas[0].fuente==='REGISTRO'?'registros anteriores':'partidas'))+'.';
-  if(filas.length===1){ ponerFila(filas[0]); marcarSucio(); recalc(); return; }
-  $('ocSelectorList').innerHTML='';
+  const actual=filas.find(f=>f.op===v('op') && f.partida===v('partida'));
+  if(actual || (!filas.length && guardado)){ ponerFila(actual||guardado); recalc(); return; }
+  if(filas.length===1){ ponerFila(filas[0]); recalc(); return; }
+  ponerFila(null); $('ocSelectorList').innerHTML='';
   filas.forEach(m=>{ const b=document.createElement('button'); b.type='button';
     b.textContent=['Partida '+(m.partida||'—'),m.op?('OP '+m.op):'',m.color,m.tela].filter(Boolean).join(' · ');
     b.onclick=()=>{ $('ocSelector').style.display='none'; ponerFila(m); marcarSucio(); recalc(); };
@@ -1176,6 +1192,7 @@ function pintarEstadoCL(){
   const cls=S.ocReg.filter(r=>r.tipo==='CHECKLIST'), acs=S.ocReg.filter(r=>r.tipo==='AUDITORIA'), ok=clAprobado();
   if(S.tipo==='AC'){
     if(S.editId) return;
+    if(S.ocSinRed){ box.innerHTML='<div class="infoBox">Sin señal: no se pudo revisar si el proceso de esta O/Corte está aprobado. Al enviar, la base lo revisa y rechaza la auditoría si no lo está.</div>'; return; }
     if(ok) box.innerHTML='<div class="okBox">✔ El proceso de esta O/Corte está <b>aprobado</b>: check list '+esc(ok.id)+' del '+fFecha(ok.fecha)+' ('+esc(ok.auditor||'')+'). Puedes registrar la auditoría.'+(acs.length?'<br>Ya tiene '+acs.length+' auditoría(s): '+acs.map(a=>esc(a.id)).join(', ')+'.':'')+'</div>';
     else box.innerHTML='<div class="malBox">⛔ Esta O/Corte no tiene un check list de proceso aprobado'+(cls.length?' (el último, '+esc(cls[0].id)+', salió rechazado)':'')+'. '+(INI.exige_checklist?'No pasa a la auditoría de corte.':'')+'<br><button type="button" id="btnIrCL">Registrar el proceso (check list)</button></div>';
     const b=$('btnIrCL'); if(b) b.onclick=()=>{ ponerTipo('CL'); marcarSucio(); };
@@ -1413,7 +1430,8 @@ function faltantes(){
   marca('fTipo',!S.tipo);
   let errOc='';
   if(!v('ocInput')) errOc='Escribe la O/Corte.';
-  else if(S.tipo==='AC' && !S.editId && INI.exige_checklist && S._ocBuscada===v('ocInput').toUpperCase() && !clAprobado()) errOc='Esta O/Corte no tiene un check list de proceso aprobado.';
+  else if(!S.oc) errOc=PART.some(r=>String(r[0])===v('ocInput').toUpperCase())?'Elige la partida de esta O/Corte.':'Esa O/Corte no está en la base de partidas.';
+  else if(S.tipo==='AC' && !S.editId && !S.ocSinRed && INI.exige_checklist && S._ocBuscada===v('ocInput').toUpperCase() && !clAprobado()) errOc='Esta O/Corte no tiene un check list de proceso aprobado.';
   $('ocErr').textContent=errOc||'Escribe la O/Corte.'; marca('fOc',!!errOc);
   if(!S.tipo) return f;
   marca('fMod',!v('modulo'));
@@ -1682,7 +1700,7 @@ function actualizarChip(){
 }
 function compactarOc(on){
   on=!!(on && S.tipo && v('ocInput'));
-  if(on && S.tipo==='AC' && !S.editId && INI && INI.exige_checklist && !clAprobado()) on=false;  /* sin proceso aprobado queda a la vista el aviso */
+  if(on && S.tipo==='AC' && !S.editId && !S.ocSinRed && INI && INI.exige_checklist && !clAprobado()) on=false;  /* sin proceso aprobado queda a la vista el aviso */
   $('cardOc').classList.toggle('compacta',on);
   if(on){ const cl=clAprobado();
     $('pFijaTx').innerHTML='✔ '+(S.tipo==='CL'?'Proceso':'Auditoría')+' · O/C <b>'+esc(v('ocInput').toUpperCase())+'</b>'+(v('grupo')?' · '+esc(v('grupo')):'')+
