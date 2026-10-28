@@ -29,4 +29,4 @@ Sin `?usuario=` aparece **Identificarme** ("¿Quién eres?" con el personal de C
 - A Sistemas: `acor_puede` es la pieza que reemplazan con su seguridad; en SQL Server la herramienta exige usuario para abrir y para leer. Exclusivo de Postgres: jsonb en la puerta, `auth.uid()` (solo supervisión), lectura libre por RLS y Storage para las fotos. La O/Corte debería salir directo del sistema de Corte (hoy de `partidas`, cargada a mano).
 
 ## Quién la usa
-Auditores de Corte de Calidad Manufactura (Chorrillos y Yosatex), en prueba desde el 28/10/2026. Hay 6 ejemplos de prueba (CL-00001 a 00003, AC-00001 a 00003, observación "EJEMPLO DE PRUEBA"): anularlos antes de las auditorías reales.
+Auditores de Corte de Calidad Manufactura (Chorrillos y Yosatex), en prueba desde el 28/10/2026. Los 6 ejemplos de prueba se borraron el 28/10/2026; los códigos empiezan en CL-00001 y AC-00001.
