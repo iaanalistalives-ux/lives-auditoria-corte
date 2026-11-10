@@ -923,20 +923,6 @@ body.tAC .grid>.soloAC,body.tCL .grid>.soloCL{display:block}
     </div>
   </div>
 
-  <!-- FOTOS -->
-  <div class="pane" data-k="fotos" data-nom="Fotos">
-    <div class="card">
-      <div class="sec"><span class="dot"></span>Fotos del corte</div>
-      <div class="hint" style="margin:-6px 0 10px" id="fotosHint">Opcional. Fotos generales del tendido, las piezas o la hoja.</div>
-      <div class="fotos" id="fotosGen"></div>
-      <div class="fotoBtns">
-        <label class="fotoBtn">📷 Tomar foto<input type="file" accept="image/*" capture="environment" id="inGen" hidden></label>
-        <label class="fotoBtn">🖼️ Elegir de galería<input type="file" accept="image/*" id="inGenGal" multiple hidden></label>
-      </div>
-      <div class="hint" id="genCount">0 fotos · máximo 10</div>
-    </div>
-  </div>
-
   <!-- CIERRE -->
   <div class="pane" data-k="cierre" data-nom="Cierre">
     <div class="card ov-card" id="ovCard">
@@ -1127,7 +1113,7 @@ function ponerTipo(t){
   $('sinTipo').style.display=t?'none':'';
   $('stick').style.display=t?'':'none';
   armarPestanas();
-  $('fotosHint').textContent=t==='CL'?'Opcional. Fotos generales del proceso; la foto de un punto se toma con 📷 en su fila, en la pestaña Check list.':'Opcional. Fotos generales del corte; la foto de cada defecto se toma con 📷 en su fila, en la pestaña Defectos.';
+  if($('fotosHint')) $('fotosHint').textContent=t==='CL'?'Opcional. Fotos generales del proceso; la foto de un punto se toma con 📷 en su fila, en la pestaña Check list.':'Opcional. Fotos generales del corte; la foto de cada defecto se toma con 📷 en su fila, en la pestaña Defectos.';
   pintarEstadoCL(); recalc();
   compactarOc(!!(v('ocInput') && S._ocBuscada===v('ocInput').toUpperCase()));
 }
@@ -1346,7 +1332,7 @@ $('camGlobal').onchange=$('galGlobal').onchange=e=>{
     refrescarChecklist(); refrescarDefectos(); marcarSucio(); guardarBorradorAhora(); },null);
 };
 function pintarFotos(){
-  const arr=S.fotosGen, cont=$('fotosGen'); cont.innerHTML='';
+  const arr=S.fotosGen, cont=$('fotosGen'); if(!cont) return; cont.innerHTML='';
   arr.forEach((val,i)=>{ const d=document.createElement('div'); d.className='fotoItem';
     d.innerHTML=fotoMini(val)+'<button type="button" class="del" aria-label="quitar">×</button>';
     d.querySelector('.del').onclick=()=>{ arr.splice(i,1); pintarFotos(); marcarSucio(); };
@@ -1361,7 +1347,7 @@ function agregarFotos(files){
     shrink(f,b64=>{ if(arr.length<MAX_FOTOS) arr.push(b64); pend--; if(pend<=0){ pintarFotos(); marcarSucio(); guardarBorradorAhora(); } },()=>{ pend--; });
   });
 }
-['inGen','inGenGal'].forEach(id=>{ $(id).onchange=e=>{ agregarFotos(e.target.files); e.target.value=''; }; });
+['inGen','inGenGal'].forEach(id=>{ if($(id)) $(id).onchange=e=>{ agregarFotos(e.target.files); e.target.value=''; }; });
 /* Achica la foto en el celular (igual que Auditoría de Artes) */
 function shrink(file,cb,onerr){
   const avisarError=msg=>{ if(onerr) onerr(msg); toast(msg,'err'); };
@@ -1670,7 +1656,7 @@ const PANES_TODOS=Array.from(document.querySelectorAll('.pane'));
 let PESTANAS=[], TABS=[], ACTUAL=0;
 function panesVisibles(){ return PESTANAS.map(k=>PANES_TODOS.find(p=>p.dataset.k===k)); }
 function armarPestanas(){
-  PESTANAS=S.tipo==='CL'?['datos','check','fotos','cierre']:(S.tipo==='AC'?['datos','tallas','defectos','fotos','cierre']:[]);
+  PESTANAS=S.tipo==='CL'?['datos','check','cierre']:(S.tipo==='AC'?['datos','tallas','defectos','cierre']:[]);
   $('tabs').innerHTML=PESTANAS.map((k,i)=>'<button type="button" class="tab" role="tab" data-t="'+i+'">'+esc(PANES_TODOS.find(p=>p.dataset.k===k).dataset.nom)+'</button>').join('');
   TABS=Array.from($('tabs').querySelectorAll('.tab'));
   TABS.forEach((t,i)=>t.addEventListener('click',()=>irPestana(i)));
